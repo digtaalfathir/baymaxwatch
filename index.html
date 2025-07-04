@@ -1,15 +1,42 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
   <head>
-    <title>BLE Time Sync</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESP32 BLE Time Sync</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 2rem;
+        background-color: #f4f4f4;
+      }
+      button {
+        font-size: 1rem;
+        padding: 10px 20px;
+        margin: 10px;
+        cursor: pointer;
+      }
+      #status {
+        margin-top: 20px;
+        font-weight: bold;
+      }
+    </style>
   </head>
   <body>
-    <h1>Sync Time to ESP32 via BLE</h1>
-    <button onclick="connectBLE()">Connect & Send Time</button>
+    <h1>BLE Time Sync ke ESP32</h1>
+
+    <button onclick="connectBLE()">🔗 Connect BLE</button>
+    <button onclick="sendTime()" id="sendBtn" disabled>⏰ Kirim Waktu</button>
+
+    <div id="status">Status: Belum terkoneksi</div>
 
     <script>
       const serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
       const characteristicUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+      let bleDevice = null;
+      let bleCharacteristic = null;
 
       async function connectBLE() {
         try {
@@ -22,15 +49,33 @@
           const service = await server.getPrimaryService(serviceUUID);
           const characteristic = await service.getCharacteristic(characteristicUUID);
 
+          bleDevice = device;
+          bleCharacteristic = characteristic;
+
+          document.getElementById("sendBtn").disabled = false;
+          document.getElementById("status").innerText = "Status: Terkoneksi ke " + device.name;
+        } catch (error) {
+          console.error("Gagal koneksi:", error);
+          alert("Gagal koneksi BLE: " + error);
+          document.getElementById("status").innerText = "Status: Gagal terkoneksi";
+        }
+      }
+
+      async function sendTime() {
+        if (!bleCharacteristic) {
+          alert("Belum terkoneksi ke ESP32.");
+          return;
+        }
+
+        try {
           const now = new Date();
           const message = `SETTIME,${now.getDate()},${now.getMonth() + 1},${now.getFullYear()},${now.getHours()},${now.getMinutes()},${now.getSeconds()}`;
           const encoder = new TextEncoder();
-          await characteristic.writeValue(encoder.encode(message));
-
-          alert("Waktu berhasil dikirim ke ESP32 via BLE!");
+          await bleCharacteristic.writeValue(encoder.encode(message));
+          alert("Waktu berhasil dikirim!");
         } catch (error) {
-          console.error(error);
-          alert("Gagal terhubung: " + error);
+          console.error("Gagal kirim waktu:", error);
+          alert("Gagal mengirim waktu: " + error);
         }
       }
     </script>
