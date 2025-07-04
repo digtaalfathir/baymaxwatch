@@ -1,91 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <title>ESP32 BLE Time Sender</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        padding: 30px;
-        background: #f2f2f2;
-      }
-
-      h2 {
-        color: #333;
-      }
-
-      input,
-      button {
-        padding: 8px;
-        margin: 5px 0;
-        font-size: 16px;
-      }
-
-      #status {
-        margin-top: 15px;
-        font-weight: bold;
-      }
-    </style>
+    <title>BLE Time Sync</title>
   </head>
   <body>
-    <h2>Set Time to ESP32 via BLE</h2>
-
-    <form id="timeForm">
-      <label>Tanggal (DD/MM/YYYY)</label><br />
-      <input type="number" id="day" placeholder="DD" min="1" max="31" required />
-      <input type="number" id="month" placeholder="MM" min="1" max="12" required />
-      <input type="number" id="year" placeholder="YYYY" min="2020" max="2099" required /><br />
-
-      <label>Jam (HH:MM:SS)</label><br />
-      <input type="number" id="hour" placeholder="HH" min="0" max="23" required />
-      <input type="number" id="minute" placeholder="MM" min="0" max="59" required />
-      <input type="number" id="second" placeholder="SS" min="0" max="59" required /><br /><br />
-
-      <button type="submit">Kirim ke ESP32</button>
-    </form>
-
-    <p id="status">Status: Belum terkoneksi</p>
+    <h1>Sync Time to ESP32 via BLE</h1>
+    <button onclick="connectBLE()">Connect & Send Time</button>
 
     <script>
-      const SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-      const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
-      let bleCharacteristic;
+      const serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+      const characteristicUUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
-      document.getElementById("timeForm").addEventListener("submit", async function (event) {
-        event.preventDefault();
-
-        const day = document.getElementById("day").value;
-        const month = document.getElementById("month").value;
-        const year = document.getElementById("year").value;
-        const hour = document.getElementById("hour").value;
-        const minute = document.getElementById("minute").value;
-        const second = document.getElementById("second").value;
-
-        const dataString = `SETTIME,${day},${month},${year},${hour},${minute},${second}`;
-        console.log("Data yang akan dikirim:", dataString);
-
+      async function connectBLE() {
         try {
-          if (!bleCharacteristic) {
-            const device = await navigator.bluetooth.requestDevice({
-              filters: [{ name: "ESP_Jam_BLE" }],
-              optionalServices: [SERVICE_UUID],
-            });
+          const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [serviceUUID],
+          });
 
-            const server = await device.gatt.connect();
-            const service = await server.getPrimaryService(SERVICE_UUID);
-            bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+          const server = await device.gatt.connect();
+          const service = await server.getPrimaryService(serviceUUID);
+          const characteristic = await service.getCharacteristic(characteristicUUID);
 
-            document.getElementById("status").textContent = "Status: Terkoneksi ke " + device.name;
-          }
-
+          const now = new Date();
+          const message = `SETTIME,${now.getDate()},${now.getMonth() + 1},${now.getFullYear()},${now.getHours()},${now.getMinutes()},${now.getSeconds()}`;
           const encoder = new TextEncoder();
-          await bleCharacteristic.writeValue(encoder.encode(dataString));
-          document.getElementById("status").textContent = "Status: Data berhasil dikirim";
+          await characteristic.writeValue(encoder.encode(message));
+
+          alert("Waktu berhasil dikirim ke ESP32 via BLE!");
         } catch (error) {
           console.error(error);
-          document.getElementById("status").textContent = "Status: Gagal mengirim data - " + error;
+          alert("Gagal terhubung: " + error);
         }
-      });
+      }
     </script>
   </body>
 </html>
