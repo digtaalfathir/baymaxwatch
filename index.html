@@ -3,33 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ESP32 BLE Time Sync</title>
+    <title>ESP32 BLE Configurator</title>
     <style>
       body {
         font-family: Arial, sans-serif;
-        text-align: center;
         padding: 2rem;
-        background-color: #f4f4f4;
+        background-color: #f0f2f5;
+        max-width: 500px;
+        margin: auto;
       }
-      button {
+      h1 {
+        text-align: center;
+      }
+      button,
+      input,
+      select {
         font-size: 1rem;
-        padding: 10px 20px;
-        margin: 10px;
-        cursor: pointer;
+        padding: 10px;
+        margin: 5px 0;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .section {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
       }
       #status {
-        margin-top: 20px;
+        text-align: center;
+        margin-top: 15px;
         font-weight: bold;
       }
     </style>
   </head>
   <body>
-    <h1>BLE Time Sync ke ESP32</h1>
+    <h1>BLE Config ke ESP32</h1>
 
-    <button onclick="connectBLE()">🔗 Connect BLE</button>
-    <button onclick="sendTime()" id="sendBtn" disabled>⏰ Kirim Waktu</button>
+    <div class="section">
+      <button onclick="connectBLE()">🔗 Hubungkan BLE</button>
+      <button onclick="sendTime()" id="sendBtn" disabled>⏰ Kirim Waktu</button>
+      <div id="status">Status: Belum terkoneksi</div>
+    </div>
 
-    <div id="status">Status: Belum terkoneksi</div>
+    <div class="section">
+      <h3>Pengaturan Jam</h3>
+      <label for="bleName">Nama BLE:</label>
+      <input type="text" id="bleName" placeholder="Contoh: BayMaxWatch" />
+
+      <label for="interval">Interval Slideshow (ms):</label>
+      <input type="number" id="interval" placeholder="Contoh: 2000" />
+
+      <label for="timeout">Timeout Layar (ms):</label>
+      <input type="number" id="timeout" placeholder="Contoh: 60000" />
+
+      <label for="format">Format Jam:</label>
+      <select id="format">
+        <option value="0">24 Jam</option>
+        <option value="1">12 Jam (AM/PM)</option>
+      </select>
+
+      <button onclick="sendSettings()" id="configBtn" disabled>💾 Simpan Pengaturan</button>
+    </div>
 
     <script>
       const serviceUUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
@@ -53,6 +89,7 @@
           bleCharacteristic = characteristic;
 
           document.getElementById("sendBtn").disabled = false;
+          document.getElementById("configBtn").disabled = false;
           document.getElementById("status").innerText = "Status: Terkoneksi ke " + device.name;
         } catch (error) {
           console.error("Gagal koneksi:", error);
@@ -76,6 +113,38 @@
         } catch (error) {
           console.error("Gagal kirim waktu:", error);
           alert("Gagal mengirim waktu: " + error);
+        }
+      }
+
+      async function sendSettings() {
+        if (!bleCharacteristic) {
+          alert("Belum terkoneksi ke ESP32.");
+          return;
+        }
+
+        try {
+          const encoder = new TextEncoder();
+
+          const bleName = document.getElementById("bleName").value.trim();
+          const interval = document.getElementById("interval").value.trim();
+          const timeout = document.getElementById("timeout").value.trim();
+          const format = document.getElementById("format").value;
+
+          if (bleName) {
+            await bleCharacteristic.writeValue(encoder.encode(`SETCFG,BLE_NAME,${bleName}`));
+          }
+          if (interval) {
+            await bleCharacteristic.writeValue(encoder.encode(`SETCFG,interval,${interval}`));
+          }
+          if (timeout) {
+            await bleCharacteristic.writeValue(encoder.encode(`SETCFG,screenTimeout,${timeout}`));
+          }
+          await bleCharacteristic.writeValue(encoder.encode(`SETCFG,is12hFormat,${format}`));
+
+          alert("Pengaturan berhasil dikirim!");
+        } catch (error) {
+          console.error("Gagal kirim pengaturan:", error);
+          alert("Gagal mengirim pengaturan: " + error);
         }
       }
     </script>
